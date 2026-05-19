@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>个人生活采集器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Personal Capture</p>
+          <h1>个人生活采集器</h1>
+        </div>
+        <button id="historyButton" class="ghost-button" type="button">最近记录</button>
+      </section>
+
+      <section id="entryGrid" class="entry-grid" aria-label="采集入口"></section>
+
+      <div id="captureModal" class="modal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <section id="capturePanel" class="capture-panel modal-panel" role="dialog" aria-modal="true" aria-labelledby="templateTitle" hidden>
+          <div class="panel-header">
+            <button id="backButton" class="icon-button" type="button" aria-label="返回">←</button>
+            <div>
+              <p id="templateKind" class="eyebrow"></p>
+              <h2 id="templateTitle"></h2>
+            </div>
+          </div>
+
+          <form id="captureForm" class="capture-form"></form>
+        </section>
+      </div>
+
+      <section id="historyPanel" class="capture-panel" hidden>
+        <div class="panel-header">
+          <button id="historyBackButton" class="icon-button" type="button" aria-label="返回">←</button>
+          <div>
+            <p class="eyebrow">History</p>
+            <h2>最近 50 条原始采集</h2>
+          </div>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
