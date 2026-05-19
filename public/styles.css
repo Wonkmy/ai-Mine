@@ -270,6 +270,68 @@ audio {
   width: 100%;
 }
 
+.tag-picker {
+  gap: 12px;
+}
+
+.tag-cloud,
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tag-chip:hover,
+.tag-chip:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.tag-chip.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.custom-tag-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.selected-tags {
+  min-height: 42px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.selected-tags:empty::before {
+  content: "已选标签会显示在这里";
+  align-self: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.preset-preview-tag {
+  cursor: default;
+}
+
+.custom-selected-tag {
+  padding-right: 12px;
+}
+
 .history-list {
   display: grid;
   gap: 12px;
@@ -370,7 +432,16 @@ audio {
   .primary-button,
   .ghost-button,
   .danger-button,
-  .audio-controls button {
+  .audio-controls button,
+  .add-tag-button {
     width: 100%;
+  }
+
+  .custom-tag-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tag-chip {
+    min-height: 42px;
   }
 }

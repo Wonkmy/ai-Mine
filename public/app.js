@@ -10,6 +10,43 @@ const templates = {
       { name: "importance", label: "重要程度", type: "range", min: 1, max: 10, value: 5 }
     ]
   },
+  keyword_tags: {
+    title: "标签/关键词采集器",
+    kind: "Keyword Tags",
+    description: "用标签记录当前想到的任何东西，支持气泡点击和自定义写入。",
+    fields: [
+      {
+        name: "keywords",
+        label: "标签/关键词",
+        type: "tag_picker",
+        required: true,
+        hint: "只保存标签，不做 AI 总结，也不和其他系统交互。",
+        options: [
+          "工作",
+          "项目",
+          "灵感",
+          "决策",
+          "情绪",
+          "焦虑",
+          "开心",
+          "压力",
+          "关系",
+          "沟通",
+          "家庭",
+          "朋友",
+          "金钱",
+          "健康",
+          "学习",
+          "产品",
+          "反感",
+          "喜欢",
+          "待办",
+          "值得记住"
+        ]
+      },
+      { name: "importance", label: "重要程度", type: "range", min: 1, max: 10, value: 5 }
+    ]
+  },
   voice_note: {
     title: "录一段语音",
     kind: "Voice Note",
@@ -149,6 +186,25 @@ function buildField(field) {
     `;
   }
 
+  if (field.type === "tag_picker") {
+    return `
+      <div class="field tag-picker" data-tag-picker="${field.name}">
+        <label>${field.label}</label>
+        <div class="tag-cloud" aria-label="${field.label}预设气泡">
+          ${field.options.map((option) => `
+            <button class="tag-chip" type="button" data-tag-value="${option}" aria-pressed="false">${option}</button>
+          `).join("")}
+        </div>
+        <div class="custom-tag-row">
+          <input id="${field.name}Custom" type="text" placeholder="自定义关键词，多个可用逗号分隔" autocomplete="off" />
+          <button class="ghost-button add-tag-button" type="button" data-add-custom-tag="${field.name}">添加</button>
+        </div>
+        <div class="selected-tags" data-selected-tags="${field.name}" aria-live="polite"></div>
+        ${hint}
+      </div>
+    `;
+  }
+
   return `
     <div class="field">
       <label for="${field.name}">${field.label}</label>
@@ -232,6 +288,7 @@ function bindFormControls() {
   });
 
   captureForm.querySelector("#cancelButton").addEventListener("click", closePanels);
+  bindTagPickers();
 
   const startButton = captureForm.querySelector("#startRecording");
   if (startButton) {
@@ -239,6 +296,75 @@ function bindFormControls() {
     captureForm.querySelector("#stopRecording").addEventListener("click", stopRecording);
     captureForm.querySelector("#clearRecording").addEventListener("click", clearRecording);
   }
+}
+
+function bindTagPickers() {
+  captureForm.querySelectorAll("[data-tag-picker]").forEach((picker) => {
+    const name = picker.dataset.tagPicker;
+    const customInput = picker.querySelector(`#${name}Custom`);
+
+    picker.querySelectorAll("[data-tag-value]").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.classList.toggle("selected");
+        button.setAttribute("aria-pressed", button.classList.contains("selected") ? "true" : "false");
+        renderSelectedTags(name);
+      });
+    });
+
+    picker.querySelector(`[data-add-custom-tag="${name}"]`).addEventListener("click", () => {
+      addCustomTags(name);
+    });
+
+    customInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addCustomTags(name);
+      }
+    });
+  });
+}
+
+function addCustomTags(name) {
+  const picker = captureForm.querySelector(`[data-tag-picker="${name}"]`);
+  const customInput = picker.querySelector(`#${name}Custom`);
+  const selectedWrap = picker.querySelector(`[data-selected-tags="${name}"]`);
+  const newTags = parseTags(customInput.value);
+
+  for (const tag of newTags) {
+    const exists = selectedWrap.querySelector(`[data-custom-tag="${cssEscape(tag)}"]`)
+      || picker.querySelector(`[data-tag-value="${cssEscape(tag)}"].selected`);
+
+    if (!exists) {
+      selectedWrap.insertAdjacentHTML("beforeend", `
+        <button class="tag-chip selected custom-selected-tag" type="button" data-custom-tag="${escapeHtml(tag)}" aria-label="移除 ${escapeHtml(tag)}">${escapeHtml(tag)} ×</button>
+      `);
+    }
+  }
+
+  customInput.value = "";
+  selectedWrap.querySelectorAll("[data-custom-tag]").forEach((button) => {
+    button.onclick = () => button.remove();
+  });
+}
+
+function renderSelectedTags(name) {
+  const picker = captureForm.querySelector(`[data-tag-picker="${name}"]`);
+  const selectedPresetTags = Array.from(picker.querySelectorAll("[data-tag-value].selected")).map((button) => button.dataset.tagValue);
+  const selectedWrap = picker.querySelector(`[data-selected-tags="${name}"]`);
+  const customTags = Array.from(selectedWrap.querySelectorAll("[data-custom-tag]")).map((button) => button.dataset.customTag);
+  const allTags = [...selectedPresetTags, ...customTags];
+
+  if (!allTags.length) {
+    selectedWrap.setAttribute("data-empty", "true");
+    selectedWrap.innerHTML = "";
+    return;
+  }
+
+  selectedWrap.removeAttribute("data-empty");
+  selectedWrap.querySelectorAll("[data-preset-preview]").forEach((button) => button.remove());
+  selectedWrap.insertAdjacentHTML("afterbegin", selectedPresetTags.map((tag) => `
+    <button class="tag-chip selected preset-preview-tag" type="button" data-preset-preview="${escapeHtml(tag)}">${escapeHtml(tag)}</button>
+  `).join(""));
 }
 
 async function startRecording() {
@@ -313,13 +439,39 @@ function parseTags(value) {
     .filter(Boolean);
 }
 
+function collectTagPickerValues(name) {
+  const picker = captureForm.querySelector(`[data-tag-picker="${name}"]`);
+  if (!picker) {
+    return [];
+  }
+
+  const selectedTags = Array.from(picker.querySelectorAll("[data-tag-value].selected")).map((button) => button.dataset.tagValue);
+  const customInputTags = parseTags(picker.querySelector(`#${name}Custom`)?.value ?? "");
+  const customBubbleTags = Array.from(picker.querySelectorAll("[data-custom-tag]")).map((button) => button.dataset.customTag);
+  return Array.from(new Set([...selectedTags, ...customBubbleTags, ...customInputTags]));
+}
+
+function cssEscape(value) {
+  if (window.CSS?.escape) {
+    return CSS.escape(value);
+  }
+
+  return value.replaceAll('"', '\\"');
+}
+
 function formToStructuredPayload(formData) {
   const template = templates[activeTemplateKey];
   const fields = {};
 
   for (const field of template.fields) {
     const rawValue = formData.get(field.name)?.trim() ?? "";
-    fields[field.name] = field.type === "tags" ? parseTags(rawValue) : rawValue;
+    if (field.type === "tags") {
+      fields[field.name] = parseTags(rawValue);
+    } else if (field.type === "tag_picker") {
+      fields[field.name] = collectTagPickerValues(field.name);
+    } else {
+      fields[field.name] = rawValue;
+    }
   }
 
   return {
@@ -337,6 +489,11 @@ captureForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const payload = formToStructuredPayload(new FormData(captureForm));
+  if (payload.captureType === "keyword_tags" && !payload.fields.keywords.length) {
+    showToast("请至少选择或写入一个标签。");
+    return;
+  }
+
   const response = await fetch("/api/captures", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
